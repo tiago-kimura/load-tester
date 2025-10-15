@@ -58,58 +58,59 @@ func main() {
 
 func runLoadTest(url string, totalRequests, concurrency int) Report {
 	startTime := time.Now()
-	
+
 	results := make(chan Result, totalRequests)
 	var wg sync.WaitGroup
-	
+
 	// Create a semaphore to control concurrency
 	semaphore := make(chan struct{}, concurrency)
-	
+
 	// Launch all requests
 	for i := 0; i < totalRequests; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			result := makeRequest(url)
 			results <- result
 		}()
 	}
-	
+
 	// Wait for all requests to complete
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
-	
+
 	// Collect results
 	statusCounts := make(map[int]int)
 	successCount := 0
 	errorCount := 0
 	var totalDuration time.Duration
-	
+
 	for result := range results {
 		if result.Error != nil {
 			errorCount++
 		} else {
 			statusCounts[result.StatusCode]++
-			if result.StatusCode == 200 {
+			// Consider 2xx status codes as successful
+			if result.StatusCode >= 200 && result.StatusCode < 300 {
 				successCount++
 			}
 		}
 		totalDuration += result.Duration
 	}
-	
+
 	elapsedTime := time.Since(startTime)
 	avgDuration := time.Duration(0)
 	if totalRequests > 0 {
 		avgDuration = totalDuration / time.Duration(totalRequests)
 	}
-	
+
 	return Report{
 		TotalRequests:   totalRequests,
 		TotalDuration:   elapsedTime,
@@ -122,10 +123,15 @@ func runLoadTest(url string, totalRequests, concurrency int) Report {
 
 func makeRequest(url string) Result {
 	startTime := time.Now()
-	
-	resp, err := http.Get(url)
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Get(url)
 	duration := time.Since(startTime)
-	
+
 	if err != nil {
 		return Result{
 			Duration: duration,
@@ -133,7 +139,7 @@ func makeRequest(url string) Result {
 		}
 	}
 	defer resp.Body.Close()
-	
+
 	return Result{
 		StatusCode: resp.StatusCode,
 		Duration:   duration,
@@ -149,23 +155,23 @@ func printReport(report Report) {
 	fmt.Printf("Total Time:           %v\n", report.TotalDuration)
 	fmt.Printf("Average Request Time: %v\n", report.AverageDuration)
 	fmt.Printf("Requests per Second:  %.2f\n\n", float64(report.TotalRequests)/report.TotalDuration.Seconds())
-	
+
 	fmt.Println("Status Code Distribution:")
 	fmt.Println("-----------------------------------------------")
 	for status, count := range report.StatusCounts {
 		percentage := float64(count) / float64(report.TotalRequests) * 100
 		fmt.Printf("  Status %d: %d requests (%.2f%%)\n", status, count, percentage)
 	}
-	
+
 	if report.ErrorCount > 0 {
 		percentage := float64(report.ErrorCount) / float64(report.TotalRequests) * 100
 		fmt.Printf("  Errors:    %d requests (%.2f%%)\n", report.ErrorCount, percentage)
 	}
-	
+
 	fmt.Println("\n===============================================")
-	fmt.Printf("Success (HTTP 200): %d/%d (%.2f%%)\n", 
-		report.SuccessCount, 
-		report.TotalRequests, 
+	fmt.Printf("Success (HTTP 2xx): %d/%d (%.2f%%)\n",
+		report.SuccessCount,
+		report.TotalRequests,
 		float64(report.SuccessCount)/float64(report.TotalRequests)*100)
 	fmt.Println("===============================================")
 }
