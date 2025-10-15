@@ -24,9 +24,14 @@ type Report struct {
 	AverageDuration time.Duration
 }
 
-// HTTP client with timeout, shared across all requests
+// HTTP client with timeout and optimized connection pooling for concurrent requests
 var httpClient = &http.Client{
 	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+	},
 }
 
 func main() {
