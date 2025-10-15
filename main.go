@@ -24,6 +24,11 @@ type Report struct {
 	AverageDuration time.Duration
 }
 
+// HTTP client with timeout, shared across all requests
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+}
+
 func main() {
 	url := flag.String("url", "", "URL to test (required)")
 	requests := flag.Int("requests", 100, "Total number of requests")
@@ -124,12 +129,7 @@ func runLoadTest(url string, totalRequests, concurrency int) Report {
 func makeRequest(url string) Result {
 	startTime := time.Now()
 
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	resp, err := client.Get(url)
+	resp, err := httpClient.Get(url)
 	duration := time.Since(startTime)
 
 	if err != nil {
