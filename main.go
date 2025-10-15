@@ -31,8 +31,10 @@ func main() {
 	fmt.Printf("Total Requests: %d\n", *requests)
 	fmt.Printf("Concurrency: %d\n\n", *concurrency)
 
+	start := time.Now()
 	results := runLoadTest(*url, *requests, *concurrency)
-	printResults(results)
+	totalElapsed := time.Since(start)
+	printResults(results, totalElapsed)
 }
 
 func runLoadTest(url string, totalRequests, concurrency int) []Result {
@@ -82,7 +84,12 @@ func makeRequest(url string) Result {
 	}
 }
 
-func printResults(results []Result) {
+func printResults(results []Result, totalElapsed time.Duration) {
+	if len(results) == 0 {
+		fmt.Println("No results to display")
+		return
+	}
+
 	var totalDuration time.Duration
 	statusCodes := make(map[int]int)
 	errorCount := 0
@@ -100,7 +107,7 @@ func printResults(results []Result) {
 	fmt.Println("--------")
 	fmt.Printf("Total requests: %d\n", len(results))
 	fmt.Printf("Average response time: %v\n", totalDuration/time.Duration(len(results)))
-	fmt.Printf("Total time: %v\n\n", totalDuration)
+	fmt.Printf("Total elapsed time: %v\n\n", totalElapsed)
 
 	fmt.Println("Status codes:")
 	for code, count := range statusCodes {
