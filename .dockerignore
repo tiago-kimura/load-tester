@@ -2,6 +2,10 @@
 .git
 .gitignore
 
+# Documentation
+README.md
+*.md
+
 # IDE
 .vscode
 .idea
@@ -12,7 +16,6 @@ Thumbs.db
 
 # Test files
 *_test.go
-test/
 
 # Build artifacts
 load-tester
