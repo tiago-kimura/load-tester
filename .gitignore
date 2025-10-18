@@ -1,5 +1,5 @@
 # Binários
-load-tester
+/load-tester
 *.exe
 *.exe~
 *.dll
